@@ -50,24 +50,70 @@ def filter_set16_champions(cdragon_data, set_number=16):
         'total_champions': len(champions_data)
     }
 
+def load_and_merge_unlock_conditions(set_data):
+    """
+    Load unlock conditions from unlock_conditions.json and merge into champion data
+    Adds 'unlock_conditions' field to each champion
+    """
+    unlock_file = os.path.join('..', 'data', 'set16', 'unlock_conditions.json')
+    
+    # Check if unlock conditions file exists
+    if not os.path.exists(unlock_file):
+        # Mark all as non-unlockable
+        for champion in set_data['champions']:
+            champion['unlock_conditions'] = None
+        return set_data
+    
+    # Load unlock conditions
+    with open(unlock_file, 'r', encoding='utf-8') as f:
+        unlock_data = json.load(f)
+    
+    # Create mapping: champion name -> unlock info (strip whitespace for matching)
+    unlock_map = {}
+    for unlock in unlock_data.get('unlocks', []):
+        champ_name = unlock['champion'].strip()
+        unlock_map[champ_name] = {
+            'conditions': unlock['conditions'],
+            'tier': unlock['tier'],
+            'condition_count': unlock['condition_count']
+        }
+    
+    # Merge unlock conditions into champions
+    merged_count = 0
+    for champion in set_data['champions']:
+        champ_name = champion['name'].strip()
+        
+        if champ_name in unlock_map:
+            champion['unlock_conditions'] = unlock_map[champ_name]
+            merged_count += 1
+        else:
+            champion['unlock_conditions'] = None
+
+    return set_data
+
 cdragon_data = get_community_dragon_data()
 
 # Extract Set 16 champions
 set16_data = filter_set16_champions(cdragon_data, set_number=16)
 
 if set16_data:
-    # Save to organized data directory
+    set16_data = load_and_merge_unlock_conditions(set16_data)
+    
+    # Save complete data
     output_dir = os.path.join('..', 'data', 'set16')
     output_file = os.path.join(output_dir, 'champions.json')
     
-    # Ensure directory exists
     os.makedirs(output_dir, exist_ok=True)
     
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(set16_data, f, indent=2, ensure_ascii=False)
     
-    print(f"Successfully crawled {set16_data['total_champions']} champions from {set16_data['set_name']}")
-    print(f"Data saved to: {output_file}")
+    unlockable_count = sum(1 for c in set16_data['champions'] if c.get('unlock_conditions'))
+    
+    print(f"Total champions: {set16_data['total_champions']}")
+    print(f"Unlockable champions: {unlockable_count}")
+    print(f"Regular champions: {set16_data['total_champions'] - unlockable_count}")
+    print(f"\nData saved to: {output_file}")
 
 else:
-    print("Failed to fetch Set 16 data")
+    print("\nFailed to fetch Set 16 data from Community Dragon")
