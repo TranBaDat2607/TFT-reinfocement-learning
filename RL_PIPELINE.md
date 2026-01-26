@@ -1260,8 +1260,8 @@ class TFTSimulator:
 **Tasks**:
 1. **Data Preparation**:
    - [x] Crawl Set 16 champions, items, traits, augments
-   - [ ] Crawl portals, unlockable conditions
-   - [ ] Parse and structure data into usable format
+   - [x] Crawl portals, unlockable conditions
+   - [x] Parse and structure data into usable format
 
 2. **Environment Setup**:
    - [ ] Build simplified TFT simulator:
