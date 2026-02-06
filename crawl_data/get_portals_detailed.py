@@ -89,11 +89,15 @@ def main():
             print(f"Data saved to: {output_file}")
             
             for portal in portals_data['portals']:
-                unit_name = portal.get('unitId', 'None')
+                unit_name = portal.get('unitId')
                 if unit_name:
                     unit_name = unit_name.replace('TFT16_', '')
-                odds_str = f"{portal['odds']}%"
-                print(f"{portal['name']:<30} {odds_str:<8} {unit_name:<15}")
+                else:
+                    unit_name = "None"
+                
+                odds_val = portal.get('odds')
+                odds_str = f"{odds_val}%" if odds_val is not None else "N/A"
+                print(f"{portal.get('name', 'Unknown'):<30} {odds_str:<8} {unit_name:<15}")
             
         else:
             print("No portals found or scraping failed")
