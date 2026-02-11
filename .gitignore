@@ -5,3 +5,6 @@ __pycache__/
 ref_project/
 scripts/
 tests/
+design_comparison.md
+model_design.md
+reference_project_analysis.md

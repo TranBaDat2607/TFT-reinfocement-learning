@@ -64,31 +64,3 @@ def scrape_unlock_conditions():
         'note': 'Unlock conditions for TFT Set 16 champions from op.gg',
         'timestamp': '2026-01-25T23:37:23+07:00'
     }
-
-if __name__ == "__main__":
-    try:
-        unlock_data = scrape_unlock_conditions()
-        
-        print(f"\n✓ Successfully crawled {unlock_data['total_unlocks']} unlock conditions!\n")
-        
-        # Display the unlocks
-        for unlock in unlock_data['unlocks']:
-            print(f"[Tier {unlock['tier']}] {unlock['champion']}")
-            for condition in unlock['conditions']:
-                print(f"  - {condition}")
-            print()
-        
-        # Save to file
-        output_dir = os.path.join('..', 'data', 'set16')
-        output_file = os.path.join(output_dir, 'unlock_conditions.json')
-        os.makedirs(output_dir, exist_ok=True)
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(unlock_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"✓ Data saved to: {output_file}")
-        
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()

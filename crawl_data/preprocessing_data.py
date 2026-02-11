@@ -5,7 +5,6 @@ import time
 
 def run_step(script_name):
     """Run a single python script and wait for it to finish"""
-    print(f"==================================================")
     print(f"Running {script_name}...")
     
     # Get the directory where this script is located
@@ -26,7 +25,6 @@ def run_step(script_name):
         print(f"✓ {script_name} completed successfully.")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error running {script_name}: {e}")
         return False
 
 def main():
@@ -56,8 +54,6 @@ def main():
             
     end_time = time.time()
     duration = end_time - start_time
-    
-    print(f"==================================================")
     print(f"Pipeline finished in {duration:.2f} seconds.")
     print(f"Successfully ran {success_count}/{len(scripts)} scripts.")
     
@@ -65,7 +61,6 @@ def main():
         print("\nAll raw data fetched successfully!")
         
         # Consolidation Step
-        print("==================================================")
         print("Step 2: Consolidating data into single archive...")
         
         try:
@@ -98,7 +93,7 @@ def main():
             with open(output_pkl, 'wb') as f:
                 pickle.dump(full_data, f)
                 
-            print(f"✓ Consolidated data saved to: {output_pkl}")
+            print(f"Consolidated data saved to: {output_pkl}")
             print(f"  - Champions: {len(full_data['champions'])}")
             print(f"  - Items: {len(full_data['items'])}")
             print(f"  - Traits: {len(full_data['traits'])}")
@@ -106,7 +101,6 @@ def main():
             print("\nPREPROCESSING COMPLETE! You are ready to train.")
             
         except Exception as e:
-            print(f"❌ Error during consolidation: {e}")
             import traceback
             traceback.print_exc()
             
