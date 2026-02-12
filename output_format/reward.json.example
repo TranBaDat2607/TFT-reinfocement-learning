@@ -1,0 +1,186 @@
+{
+  "_comment": "Reward structure returned by environment",
+  "_description": "Scalar reward value returned after each env.step(action)",
+
+  "reward_type": "sparse_placement + optional_combat_shaping",
+
+  "placement_rewards": {
+    "_description": "Final placement rewards (given only at game termination)",
+    "_when": "When done=True (player eliminated or game ends)",
+    "_magnitude": "[-1.0, +1.0]",
+
+    "reward_table": {
+      "1st_place": 1.0,
+      "2nd_place": 0.5,
+      "3rd_place": 0.25,
+      "4th_place": 0.1,
+      "5th_place": -0.1,
+      "6th_place": -0.25,
+      "7th_place": -0.5,
+      "8th_place": -1.0
+    },
+
+    "examples": {
+      "winning_game": {
+        "placement": 1,
+        "reward": 1.0,
+        "description": "Agent finished 1st place"
+      },
+      "top_4_finish": {
+        "placement": 4,
+        "reward": 0.1,
+        "description": "Agent finished 4th (barely top 4)"
+      },
+      "bottom_4_finish": {
+        "placement": 6,
+        "reward": -0.25,
+        "description": "Agent finished 6th (bottom 4)"
+      },
+      "last_place": {
+        "placement": 8,
+        "reward": -1.0,
+        "description": "Agent finished last (8th place)"
+      }
+    }
+  },
+
+  "combat_shaping_rewards": {
+    "_description": "Small per-round rewards based on combat outcome (OPTIONAL)",
+    "_when": "After each combat round (every planning phase)",
+    "_magnitude": "[-0.005, +0.01]",
+    "_purpose": "Reduce variance, provide immediate feedback",
+
+    "reward_table": {
+      "won_combat": 0.01,
+      "lost_combat": -0.005,
+      "draw_combat": 0.0,
+      "no_combat_this_round": 0.0
+    },
+
+    "examples": {
+      "win_fight": {
+        "combat_result": "won",
+        "reward": 0.01,
+        "description": "Agent's board defeated opponent"
+      },
+      "lose_fight": {
+        "combat_result": "lost",
+        "reward": -0.005,
+        "description": "Agent's board lost to opponent"
+      },
+      "carousel_round": {
+        "combat_result": "no_combat",
+        "reward": 0.0,
+        "description": "Carousel/minion round (no PvP combat)"
+      }
+    },
+
+    "_note": "Combat rewards are MUCH smaller than placement to avoid reward hacking"
+  },
+
+  "total_reward_calculation": {
+    "_description": "How reward is computed each step",
+
+    "during_game": {
+      "formula": "reward = combat_reward",
+      "range": "[-0.005, +0.01]",
+      "example_round_15": {
+        "combat_result": "won",
+        "reward": 0.01
+      }
+    },
+
+    "at_game_end": {
+      "formula": "reward = placement_reward + sum(all_combat_rewards)",
+      "example_1st_place": {
+        "placement_reward": 1.0,
+        "total_combat_rewards": 0.15,
+        "_combat_breakdown": "15 wins × 0.01 = 0.15",
+        "final_reward": 1.15,
+        "_note": "Placement dominates the signal"
+      },
+      "example_8th_place": {
+        "placement_reward": -1.0,
+        "total_combat_rewards": -0.08,
+        "_combat_breakdown": "16 losses × -0.005 = -0.08",
+        "final_reward": -1.08
+      }
+    }
+  },
+
+  "reward_per_step_examples": {
+    "_description": "Concrete examples of what reward looks like at each timestep",
+
+    "step_1": {
+      "round": 1,
+      "action": "buy_champion",
+      "combat_result": "no_combat (carousel round)",
+      "reward": 0.0,
+      "done": false
+    },
+
+    "step_5": {
+      "round": 5,
+      "action": "level_up",
+      "combat_result": "won",
+      "reward": 0.01,
+      "done": false
+    },
+
+    "step_12": {
+      "round": 12,
+      "action": "reroll_shop",
+      "combat_result": "lost",
+      "reward": -0.005,
+      "done": false
+    },
+
+    "step_25_final": {
+      "round": 25,
+      "action": "pass",
+      "combat_result": "lost (eliminated at 0 HP)",
+      "placement": 5,
+      "reward": -0.1,
+      "_breakdown": "placement_reward (-0.1) at termination",
+      "done": true,
+      "_note": "Combat rewards from all previous rounds are already given"
+    }
+  },
+
+  "discount_factor": {
+    "_description": "Gamma for future reward discounting",
+    "gamma": 0.99,
+    "_note": "Standard PPO discount factor"
+  },
+
+  "reward_normalization": {
+    "_description": "Rewards are NOT normalized by environment",
+    "_note": "Training code should handle normalization if needed",
+    "raw_range": "[-1.08, +1.15] approximately",
+    "typical_range": "[-0.5, +0.5] for most games"
+  },
+
+  "design_rationale": {
+    "why_sparse": [
+      "Avoid reward hacking (agent exploiting shaped rewards)",
+      "Let agent discover economy/synergy strategies naturally",
+      "Simpler to tune (fewer hyperparameters)",
+      "Proven in literature (OpenAI Dota 2 simplified rewards over time)"
+    ],
+
+    "why_small_combat_shaping": [
+      "Reduce variance in sparse signal",
+      "Provide immediate feedback during learning",
+      "Small enough to not dominate placement signal",
+      "Can be disabled entirely if reward hacking occurs"
+    ],
+
+    "alternative_to_avoid": {
+      "_warning": "Do NOT use these complex reward components",
+      "economy_rewards": "Agent should learn gold management naturally",
+      "synergy_rewards": "Agent should discover trait bonuses naturally",
+      "milestone_rewards": "Leads to reward hacking",
+      "weighted_sum_with_annealing": "11 hyperparameters to tune, too complex"
+    }
+  }
+}

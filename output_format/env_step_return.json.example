@@ -1,0 +1,308 @@
+{
+  "_comment": "Full return value from env.step(actions)",
+  "_description": "Multi-agent PettingZoo environment step return",
+
+  "function_signature": "observations, rewards, dones, truncations, infos = env.step(actions)",
+
+  "observations": {
+    "_type": "dict[agent_id, observation]",
+    "_description": "Observation for each alive agent",
+
+    "player_0": {
+      "_comment": "See observation_state.json.example for full structure",
+      "global_state": "np.array([32], dtype=float32)",
+      "units_state": "np.array([20, 32], dtype=float32)",
+      "shop_state": "np.array([5, 16], dtype=float32)",
+      "opponents_state": "np.array([7, 24], dtype=float32)"
+    },
+
+    "player_1": {
+      "_comment": "Same structure as player_0",
+      "global_state": "...",
+      "units_state": "...",
+      "shop_state": "...",
+      "opponents_state": "..."
+    },
+
+    "_note": "Only alive agents get observations. Dead agents are not in this dict."
+  },
+
+  "rewards": {
+    "_type": "dict[agent_id, float]",
+    "_description": "Scalar reward for each agent",
+
+    "player_0": 0.01,
+    "_player_0_comment": "Won combat this round",
+
+    "player_1": -0.005,
+    "_player_1_comment": "Lost combat this round",
+
+    "player_2": 0.0,
+    "_player_2_comment": "Carousel round (no combat)",
+
+    "player_3": -0.25,
+    "_player_3_comment": "Just died, finished 6th place (placement reward)",
+
+    "_note": "Rewards are given for all agents (alive or just died this step)"
+  },
+
+  "dones": {
+    "_type": "dict[agent_id, bool]",
+    "_description": "Whether each agent's episode is done",
+
+    "player_0": false,
+    "_player_0_comment": "Still alive, game continues",
+
+    "player_1": false,
+    "_player_1_comment": "Still alive",
+
+    "player_2": false,
+    "_player_2_comment": "Still alive",
+
+    "player_3": true,
+    "_player_3_comment": "Just died (HP reached 0)",
+
+    "__all__": false,
+    "_all_comment": "Game not over yet (at least 2 players alive)"
+  },
+
+  "truncations": {
+    "_type": "dict[agent_id, bool]",
+    "_description": "Whether episode was truncated (hit max rounds)",
+
+    "player_0": false,
+    "player_1": false,
+    "player_2": false,
+    "player_3": false,
+    "__all__": false,
+
+    "_note": "Only true if game hits max_rounds limit (48 rounds)"
+  },
+
+  "infos": {
+    "_type": "dict[agent_id, dict]",
+    "_description": "Additional metadata for each agent",
+
+    "player_0": {
+      "hp": 75,
+      "gold": 42,
+      "level": 6,
+      "placement": 3,
+      "is_alive": true,
+      "rounds_survived": 15,
+      "combat_result": "won",
+      "damage_dealt": 8,
+      "damage_taken": 0,
+      "board_strength": 850,
+      "units_count": 6,
+      "gold_spent_this_round": 4,
+      "action_was_valid": true
+    },
+
+    "player_1": {
+      "hp": 58,
+      "gold": 28,
+      "level": 5,
+      "placement": 5,
+      "is_alive": true,
+      "rounds_survived": 15,
+      "combat_result": "lost",
+      "damage_dealt": 0,
+      "damage_taken": 6,
+      "board_strength": 620,
+      "units_count": 5,
+      "gold_spent_this_round": 12,
+      "action_was_valid": true
+    },
+
+    "player_3": {
+      "hp": 0,
+      "gold": 35,
+      "level": 6,
+      "placement": 6,
+      "is_alive": false,
+      "rounds_survived": 15,
+      "combat_result": "lost",
+      "damage_dealt": 0,
+      "damage_taken": 12,
+      "board_strength": 580,
+      "units_count": 6,
+      "elimination_round": 15,
+      "final_placement": 6,
+      "is_top4": false,
+      "action_was_valid": true
+    },
+
+    "_note": "Info dict provides debugging and logging information"
+  },
+
+  "example_full_step": {
+    "_description": "Complete example of env.step() return at round 15",
+
+    "input_actions": {
+      "player_0": {
+        "action_type": 3,
+        "_type_name": "BUY_CHAMPION",
+        "shop_slot": 2
+      },
+      "player_1": {
+        "action_type": 2,
+        "_type_name": "REFRESH_SHOP"
+      },
+      "player_2": {
+        "action_type": 0,
+        "_type_name": "PASS"
+      },
+      "player_3": {
+        "action_type": 1,
+        "_type_name": "BUY_XP"
+      }
+    },
+
+    "output": {
+      "observations": {
+        "player_0": "<observation_dict>",
+        "player_1": "<observation_dict>",
+        "player_2": "<observation_dict>",
+        "_note": "player_3 eliminated, no observation"
+      },
+
+      "rewards": {
+        "player_0": 0.01,
+        "player_1": -0.005,
+        "player_2": 0.01,
+        "player_3": -0.25
+      },
+
+      "dones": {
+        "player_0": false,
+        "player_1": false,
+        "player_2": false,
+        "player_3": true,
+        "__all__": false
+      },
+
+      "truncations": {
+        "player_0": false,
+        "player_1": false,
+        "player_2": false,
+        "player_3": false,
+        "__all__": false
+      },
+
+      "infos": {
+        "player_0": {"hp": 75, "gold": 38, "level": 6, "...": "..."},
+        "player_1": {"hp": 58, "gold": 26, "level": 5, "...": "..."},
+        "player_2": {"hp": 82, "gold": 55, "level": 7, "...": "..."},
+        "player_3": {"hp": 0, "placement": 6, "is_alive": false, "...": "..."}
+      }
+    }
+  },
+
+  "game_end_example": {
+    "_description": "env.step() when game ends (only 1 player left)",
+
+    "round": 28,
+    "alive_players": 2,
+    "_scenario": "player_0 and player_1 fight, player_1 dies",
+
+    "output": {
+      "observations": {
+        "player_0": "<final_observation>",
+        "_note": "Winner gets final observation"
+      },
+
+      "rewards": {
+        "player_0": 1.0,
+        "_breakdown": "1st place reward",
+        "player_1": 0.5,
+        "_breakdown": "2nd place reward"
+      },
+
+      "dones": {
+        "player_0": true,
+        "player_1": true,
+        "__all__": true,
+        "_note": "Game over, all agents done"
+      },
+
+      "truncations": {
+        "player_0": false,
+        "player_1": false,
+        "__all__": false
+      },
+
+      "infos": {
+        "player_0": {
+          "placement": 1,
+          "is_alive": true,
+          "rounds_survived": 28,
+          "total_damage_dealt": 245,
+          "total_damage_taken": 42,
+          "is_top4": true,
+          "won_game": true
+        },
+        "player_1": {
+          "placement": 2,
+          "is_alive": false,
+          "rounds_survived": 28,
+          "total_damage_dealt": 198,
+          "total_damage_taken": 88,
+          "is_top4": true,
+          "won_game": false
+        }
+      }
+    }
+  },
+
+  "truncation_example": {
+    "_description": "env.step() when max_rounds is reached",
+
+    "round": 48,
+    "_scenario": "Hit max_rounds limit with 3 players still alive",
+
+    "output": {
+      "dones": {
+        "player_0": true,
+        "player_1": true,
+        "player_2": true,
+        "__all__": true
+      },
+
+      "truncations": {
+        "player_0": true,
+        "player_1": true,
+        "player_2": true,
+        "__all__": true,
+        "_note": "Episode truncated, not naturally terminated"
+      },
+
+      "rewards": {
+        "_note": "Placement rewards assigned based on current HP/placement",
+        "player_0": 1.0,
+        "player_1": 0.5,
+        "player_2": 0.25
+      }
+    }
+  },
+
+  "pettingzoo_compliance": {
+    "_description": "This format follows PettingZoo AEC API",
+    "_reference": "https://pettingzoo.farama.org/api/aec/",
+
+    "key_properties": {
+      "observations": "Only for alive agents (or just-died agents)",
+      "rewards": "For all agents who acted this step",
+      "dones": "Per-agent termination + __all__ for game over",
+      "truncations": "Per-agent truncation (max_rounds)",
+      "infos": "Arbitrary metadata for debugging/logging"
+    },
+
+    "agent_lifecycle": {
+      "alive": "Appears in observations, rewards, dones=False",
+      "just_died": "Gets final reward, dones=True, no more observations",
+      "dead": "Not in observations, may appear in dones=True",
+      "all_dead": "dones['__all__']=True, episode ends"
+    }
+  }
+}

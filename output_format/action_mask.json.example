@@ -1,0 +1,278 @@
+{
+  "_comment": "Action mask returned by action_space.get_action_mask(player)",
+  "_description": "Boolean masks indicating which actions are valid for current player state",
+
+  "purpose": "Prevent agent from selecting invalid actions (speeds up learning)",
+
+  "action_type_mask": {
+    "_shape": [7],
+    "_type": "numpy.ndarray (bool)",
+    "_description": "Which of the 7 action types are valid",
+
+    "indices": {
+      "0": "PASS",
+      "1": "BUY_XP",
+      "2": "REFRESH_SHOP",
+      "3": "BUY_CHAMPION",
+      "4": "SELL_CHAMPION",
+      "5": "MOVE_CHAMPION",
+      "6": "LOCK_SHOP"
+    },
+
+    "example_early_game": {
+      "_scenario": "Player has 10 gold, level 3, no units",
+      "mask": [true, true, true, true, false, false, false],
+      "_breakdown": {
+        "PASS": true,
+        "_pass_reason": "Always valid",
+
+        "BUY_XP": true,
+        "_buy_xp_reason": "Has 4+ gold and not max level",
+
+        "REFRESH_SHOP": true,
+        "_refresh_reason": "Has 2+ gold",
+
+        "BUY_CHAMPION": true,
+        "_buy_champ_reason": "Has affordable champions in shop",
+
+        "SELL_CHAMPION": false,
+        "_sell_reason": "No units to sell",
+
+        "MOVE_CHAMPION": false,
+        "_move_reason": "No units to move",
+
+        "LOCK_SHOP": false,
+        "_lock_reason": "Feature disabled in MVP"
+      }
+    },
+
+    "example_late_game": {
+      "_scenario": "Player has 2 gold, level 11, 8 units",
+      "mask": [true, false, true, false, true, true, false],
+      "_breakdown": {
+        "PASS": true,
+        "BUY_XP": false,
+        "_buy_xp_reason": "Already max level (11)",
+
+        "REFRESH_SHOP": true,
+        "_refresh_reason": "Has 2+ gold",
+
+        "BUY_CHAMPION": false,
+        "_buy_champ_reason": "Can't afford any champions in shop",
+
+        "SELL_CHAMPION": true,
+        "_sell_reason": "Has 8 units on board/bench",
+
+        "MOVE_CHAMPION": true,
+        "_move_reason": "Has units to reposition",
+
+        "LOCK_SHOP": false
+      }
+    },
+
+    "example_broke": {
+      "_scenario": "Player has 0 gold",
+      "mask": [true, false, false, false, false, true, false],
+      "_breakdown": {
+        "PASS": true,
+        "BUY_XP": false,
+        "REFRESH_SHOP": false,
+        "BUY_CHAMPION": false,
+        "SELL_CHAMPION": false,
+        "_sell_reason": "No units",
+
+        "MOVE_CHAMPION": true,
+        "_move_reason": "Can still move existing units (costs 0 gold)",
+
+        "LOCK_SHOP": false
+      }
+    }
+  },
+
+  "shop_slot_mask": {
+    "_shape": [5],
+    "_type": "numpy.ndarray (bool)",
+    "_description": "Which shop slots can be purchased (for BUY_CHAMPION action)",
+
+    "example_affordable": {
+      "_scenario": "Player has 5 gold, shop has [1-cost, 3-cost, 5-cost, 2-cost, 1-cost]",
+      "mask": [true, true, false, true, true],
+      "_breakdown": {
+        "slot_0": true,
+        "_slot_0_reason": "1-cost, can afford",
+
+        "slot_1": true,
+        "_slot_1_reason": "3-cost, can afford",
+
+        "slot_2": false,
+        "_slot_2_reason": "5-cost, cannot afford",
+
+        "slot_3": true,
+        "_slot_3_reason": "2-cost, can afford",
+
+        "slot_4": true,
+        "_slot_4_reason": "1-cost, can afford"
+      }
+    },
+
+    "example_sold_out": {
+      "_scenario": "One champion type is sold out from pool",
+      "mask": [true, false, true, true, true],
+      "_breakdown": {
+        "slot_1": false,
+        "_reason": "Champion available but pool is empty (all owned by other players)"
+      }
+    }
+  },
+
+  "sell_position_mask": {
+    "_shape": [37],
+    "_type": "numpy.ndarray (bool)",
+    "_description": "Which positions have units that can be sold",
+
+    "position_encoding": {
+      "0-27": "Board positions (4 rows × 7 cols, row-major)",
+      "28-36": "Bench positions (9 slots)"
+    },
+
+    "example": {
+      "_scenario": "3 units on board (positions 0, 7, 14), 2 on bench (slots 0, 3)",
+      "mask": [
+        true, false, false, false, false, false, false,
+        true, false, false, false, false, false, false,
+        true, false, false, false, false, false, false,
+        false, false, false, false, false, false, false,
+        true, false, false, true, false, false, false, false, false
+      ],
+      "_breakdown": {
+        "position_0": true,
+        "_pos_0_reason": "Unit at board (0,0)",
+
+        "position_7": true,
+        "_pos_7_reason": "Unit at board (1,0)",
+
+        "position_14": true,
+        "_pos_14_reason": "Unit at board (2,0)",
+
+        "position_28": true,
+        "_pos_28_reason": "Unit in bench slot 0",
+
+        "position_31": true,
+        "_pos_31_reason": "Unit in bench slot 3",
+
+        "all_others": false,
+        "_reason": "Empty positions"
+      }
+    }
+  },
+
+  "move_from_mask": {
+    "_shape": [37],
+    "_type": "numpy.ndarray (bool)",
+    "_description": "Which positions have units that can be moved FROM",
+
+    "example": {
+      "_scenario": "Same as sell_position_mask (can move from same positions you can sell from)",
+      "mask": "Same as sell_position_mask in most cases",
+      "_note": "This mask identifies source positions for MOVE_CHAMPION action"
+    }
+  },
+
+  "move_to_mask": {
+    "_shape": [37],
+    "_type": "numpy.ndarray (bool)",
+    "_description": "Which positions can receive a unit (empty slots)",
+
+    "example": {
+      "_scenario": "Board has 3/6 units, bench has 2/9 units",
+      "board_capacity": 6,
+      "_board_note": "Level 6 allows max 6 units on board",
+
+      "mask": [
+        false, true, true, true, true, true, true,
+        false, true, true, true, true, true, true,
+        false, true, true, true, true, true, true,
+        true, true, true, true, true, true, true,
+        false, true, true, false, true, true, true, true, true
+      ],
+      "_breakdown": {
+        "board_positions_0_7_14": false,
+        "_reason": "Occupied by units",
+
+        "board_other_positions": true,
+        "_reason": "Empty and board not full (3/6)",
+
+        "bench_slot_0": false,
+        "_bench_0_reason": "Occupied",
+
+        "bench_slot_3": false,
+        "_bench_3_reason": "Occupied",
+
+        "bench_other_slots": true,
+        "_bench_reason": "Empty bench slots"
+      }
+    },
+
+    "board_full_example": {
+      "_scenario": "Board has 6/6 units (max for level 6)",
+      "board_positions": "All false (cannot add more to board)",
+      "bench_positions": "True for empty slots",
+      "_note": "Can only move to bench when board is full"
+    }
+  },
+
+  "full_mask_structure": {
+    "_description": "Complete mask dictionary returned by get_action_mask()",
+
+    "example_return": {
+      "action_type": "np.array([T,T,T,T,F,T,F], dtype=bool)",
+      "shop_slot": "np.array([T,T,F,T,T], dtype=bool)",
+      "sell_position": "np.array([37 bools], dtype=bool)",
+      "move_from": "np.array([37 bools], dtype=bool)",
+      "move_to": "np.array([37 bools], dtype=bool)"
+    }
+  },
+
+  "usage_in_neural_network": {
+    "_description": "How to apply masks during policy forward pass",
+
+    "pseudocode": [
+      "# Get raw action logits from policy network",
+      "action_type_logits = policy.action_type_head(latent_state)",
+      "shop_slot_logits = policy.shop_slot_head(latent_state)",
+      "",
+      "# Get action mask",
+      "mask = action_space.get_action_mask(player)",
+      "",
+      "# Apply mask (set invalid actions to -inf)",
+      "action_type_logits = action_type_logits.masked_fill(~mask['action_type'], -1e9)",
+      "shop_slot_logits = shop_slot_logits.masked_fill(~mask['shop_slot'], -1e9)",
+      "",
+      "# Softmax (invalid actions get ~0 probability)",
+      "action_type_probs = softmax(action_type_logits)",
+      "shop_slot_probs = softmax(shop_slot_logits)",
+      "",
+      "# Sample action",
+      "action_type = sample_from(action_type_probs)",
+      "shop_slot = sample_from(shop_slot_probs) if action_type == BUY_CHAMPION else 0"
+    ]
+  },
+
+  "validation": {
+    "_description": "Masks guarantee that sampled actions are always valid",
+
+    "guarantees": [
+      "If action_type_mask[i] == False, agent cannot select action type i",
+      "If shop_slot_mask[j] == False, agent cannot buy from slot j",
+      "Invalid actions have ~0 probability after masking",
+      "execute_action() will succeed if action was sampled from masked distribution"
+    ],
+
+    "benefits": [
+      "No wasted exploration on invalid actions",
+      "Faster training (only explores valid action space)",
+      "Guaranteed valid behavior at deployment",
+      "Reduces action space size dynamically (e.g., 7 actions → 3 valid actions)"
+    ]
+  }
+}

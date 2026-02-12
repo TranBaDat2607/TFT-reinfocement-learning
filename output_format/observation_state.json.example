@@ -1,0 +1,243 @@
+{
+  "_comment": "Full observation state returned by env.observe(agent_id)",
+  "_description": "This is what each agent receives as input to the neural network",
+
+  "global_state": {
+    "_shape": [32],
+    "_type": "numpy.ndarray (float32)",
+    "_description": "Scalar game state features (normalized [0, 1])",
+
+    "features": {
+      "stage": 0.286,
+      "_stage_comment": "Current stage (2/7 = 0.286)",
+
+      "round_in_stage": 0.429,
+      "_round_in_stage_comment": "Round within stage (3/7 = 0.429)",
+
+      "my_hp": 0.75,
+      "_my_hp_comment": "My health (75/100 = 0.75)",
+
+      "my_gold": 0.42,
+      "_my_gold_comment": "My gold (42/100 = 0.42, capped at 100)",
+
+      "my_level": 0.5,
+      "_my_level_comment": "My level (6/11 = 0.545, normalized)",
+
+      "my_xp_progress": 0.611,
+      "_my_xp_progress_comment": "XP progress to next level (22/36 = 0.611)",
+
+      "time_in_phase": 0.8,
+      "_time_in_phase_comment": "Time remaining in planning phase (24/30 seconds)",
+
+      "num_alive_opponents": 0.857,
+      "_num_alive_comment": "Alive opponents (6/7 = 0.857)",
+
+      "my_placement": 0.375,
+      "_my_placement_comment": "Current rank (3/8 = 0.375, lower is better)",
+
+      "streak_level": 0.4,
+      "_streak_comment": "Win streak level (2/5 = 0.4)",
+
+      "interest_gold": 0.8,
+      "_interest_comment": "Interest earned next round (4/5 = 0.8)"
+    },
+
+    "example_array": [
+      0.286, 0.429, 0.75, 0.42, 0.5, 0.611, 0.8, 0.857,
+      0.375, 0.4, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+    ],
+    "_array_comment": "Actual numpy array with 32 floats (padded with zeros)"
+  },
+
+  "units_state": {
+    "_shape": [20, 32],
+    "_type": "numpy.ndarray (float32)",
+    "_description": "All units (board + bench), each with 32 features",
+
+    "max_units": 20,
+    "_max_comment": "11 board slots + 9 bench slots = 20 total",
+
+    "unit_features": {
+      "champion_id": "int (0-80, will be embedded)",
+      "star_level": "int (1-3)",
+      "cost": "int (1-6)",
+      "position_row": "int (0-3 for board, -1 for bench)",
+      "position_col": "int (0-6 for board, 0-8 for bench)",
+      "item_1": "int (0-100, item ID or 0 if empty)",
+      "item_2": "int (0-100, item ID or 0 if empty)",
+      "item_3": "int (0-100, item ID or 0 if empty)",
+      "current_hp": "float (normalized [0, 1])",
+      "max_hp": "float (normalized)",
+      "attack_damage": "float (normalized)",
+      "armor": "float (normalized)",
+      "magic_resist": "float (normalized)",
+      "attack_speed": "float (normalized)",
+      "trait_1": "int (trait ID or 0)",
+      "trait_2": "int (trait ID or 0)",
+      "trait_3": "int (trait ID or 0)",
+      "is_on_board": "float (1.0 if board, 0.0 if bench)",
+      "is_frontline": "float (1.0 if front 2 rows, 0.0 otherwise)"
+    },
+
+    "example_units": [
+      {
+        "_comment": "Unit 0: Ahri (3-cost, 2-star) on board position (1, 3)",
+        "array": [
+          23.0, 2.0, 3.0, 1.0, 3.0,
+          45.0, 0.0, 0.0,
+          1.0, 1800.0, 75.0, 40.0, 40.0, 0.8,
+          7.0, 12.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      },
+      {
+        "_comment": "Unit 1: Jinx (4-cost, 1-star) on bench slot 0",
+        "array": [
+          38.0, 1.0, 4.0, -1.0, 0.0,
+          0.0, 0.0, 0.0,
+          1.0, 900.0, 65.0, 25.0, 25.0, 1.0,
+          5.0, 11.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      },
+      {
+        "_comment": "Unit 2: Empty slot (all zeros)",
+        "array": [
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      }
+    ],
+
+    "_note": "Array shape is (20, 32). Units beyond current count are zero-padded.",
+    "_encoding_note": "This gets encoded by Transformer(d_model=128) → 128-dim output"
+  },
+
+  "shop_state": {
+    "_shape": [5, 16],
+    "_type": "numpy.ndarray (float32)",
+    "_description": "Shop champions (5 slots)",
+
+    "slot_features": {
+      "champion_id": "int (0-80, 0 if empty slot)",
+      "cost": "int (1-6)",
+      "can_afford": "float (1.0 if yes, 0.0 if no)",
+      "copies_owned": "int (how many copies I have)",
+      "is_available_in_pool": "float (1.0 if available, 0.0 if sold out)",
+      "tier_probability": "float (probability of this tier at my level)"
+    },
+
+    "example_shop": [
+      {
+        "_comment": "Slot 0: Twisted Fate (2-cost), can afford",
+        "array": [15.0, 2.0, 1.0, 0.0, 1.0, 0.33, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      },
+      {
+        "_comment": "Slot 1: Jinx (4-cost), cannot afford (need 4 gold, have 2)",
+        "array": [38.0, 4.0, 0.0, 1.0, 1.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      },
+      {
+        "_comment": "Slot 2: Graves (1-cost), can afford",
+        "array": [8.0, 1.0, 1.0, 2.0, 1.0, 0.16, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      },
+      {
+        "_comment": "Slot 3: Ahri (3-cost), can afford",
+        "array": [23.0, 3.0, 1.0, 2.0, 1.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      },
+      {
+        "_comment": "Slot 4: Syndra (3-cost), can afford",
+        "array": [51.0, 3.0, 1.0, 0.0, 1.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      }
+    ],
+
+    "_encoding_note": "This gets flattened (5×16=80) then MLP → 64-dim output"
+  },
+
+  "opponents_state": {
+    "_shape": [7, 24],
+    "_type": "numpy.ndarray (float32)",
+    "_description": "Public information about 7 opponents",
+
+    "opponent_features": {
+      "hp": "float (normalized [0, 1])",
+      "level": "int (1-11)",
+      "is_alive": "float (1.0 if alive, 0.0 if dead)",
+      "board_unit_count": "int (0-11)",
+      "estimated_board_strength": "float (normalized, based on visible info)",
+      "rounds_since_scouted": "int (how long since we scouted them)",
+      "comp_archetype_id": "int (0-20, composition type if known)",
+      "threat_level": "float (normalized [0, 1], higher = more dangerous)",
+      "last_combat_result": "float (1.0 won, 0.0 lost, 0.5 unknown)",
+      "win_streak": "int (consecutive wins, 0-10)",
+      "placement_rank": "int (current rank 1-8)"
+    },
+
+    "example_opponents": [
+      {
+        "_comment": "Opponent 0: Strong player (100 HP, level 7, alive, 7 units)",
+        "array": [
+          1.0, 7.0, 1.0, 7.0, 0.85, 3.0, 5.0, 0.9, 1.0, 4.0, 1.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      },
+      {
+        "_comment": "Opponent 1: Weak player (35 HP, level 5, alive, 5 units)",
+        "array": [
+          0.35, 5.0, 1.0, 5.0, 0.45, 5.0, 2.0, 0.3, 0.0, 0.0, 7.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      },
+      {
+        "_comment": "Opponent 2: Dead player (0 HP)",
+        "array": [
+          0.0, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 8.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      },
+      {
+        "_comment": "Opponent 3-6: Similar structure",
+        "array": [
+          0.68, 6.0, 1.0, 6.0, 0.62, 2.0, 8.0, 0.55, 1.0, 2.0, 4.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      }
+    ],
+
+    "_encoding_note": "This gets processed by MLP → 64-dim output"
+  },
+
+  "encoded_latent_state": {
+    "_comment": "After all encoders are applied and concatenated",
+    "_shape": [256],
+    "_type": "numpy.ndarray (float32)",
+    "_description": "Final encoded observation fed to policy/value networks",
+
+    "composition": {
+      "global_encoded": "64 dims (from global_state via MLP)",
+      "units_encoded": "128 dims (from units_state via Transformer)",
+      "shop_encoded": "64 dims (from shop_state via MLP)",
+      "opponents_encoded": "64 dims (from opponents_state via MLP)",
+      "total": "320 dims → Fusion layer → 256 dims"
+    },
+
+    "fusion_process": [
+      "1. Concat all encoded components → 320 dims",
+      "2. Linear(320 → 256)",
+      "3. LayerNorm(256)",
+      "4. ReLU activation",
+      "5. Output: 256-dim latent vector"
+    ],
+
+    "example_latent": {
+      "_note": "This is what the policy and value networks receive as input",
+      "_shape": [256],
+      "sample_values": [
+        0.234, -0.156, 0.891, 0.023, -0.567, 0.734, 0.112, -0.289,
+        "... (248 more values) ..."
+      ]
+    }
+  }
+}

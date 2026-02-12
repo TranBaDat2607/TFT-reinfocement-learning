@@ -1,0 +1,407 @@
+{
+  "_comment": "Info dictionary returned in env.step() for each agent",
+  "_description": "Metadata for debugging, logging, and analysis (not used for training)",
+
+  "purpose": "Provide additional context that doesn't go into observations but is useful for monitoring",
+
+  "standard_fields": {
+    "_description": "Fields present in every info dict",
+
+    "hp": {
+      "type": "int",
+      "range": [0, 100],
+      "description": "Current health points",
+      "example": 75
+    },
+
+    "gold": {
+      "type": "int",
+      "range": [0, 999],
+      "description": "Current gold amount",
+      "example": 42
+    },
+
+    "level": {
+      "type": "int",
+      "range": [1, 11],
+      "description": "Current player level",
+      "example": 6
+    },
+
+    "xp": {
+      "type": "int",
+      "range": [0, 136],
+      "description": "Current experience points",
+      "example": 22
+    },
+
+    "placement": {
+      "type": "int",
+      "range": [1, 8],
+      "description": "Current placement rank (1=best, 8=worst)",
+      "example": 3
+    },
+
+    "is_alive": {
+      "type": "bool",
+      "description": "Whether player is still in the game",
+      "example": true
+    },
+
+    "rounds_survived": {
+      "type": "int",
+      "range": [1, 48],
+      "description": "Number of rounds player has survived",
+      "example": 15
+    },
+
+    "action_was_valid": {
+      "type": "bool",
+      "description": "Whether the action executed successfully",
+      "example": true
+    }
+  },
+
+  "combat_fields": {
+    "_description": "Fields related to combat outcomes",
+
+    "combat_result": {
+      "type": "str",
+      "options": ["won", "lost", "draw", "no_combat"],
+      "description": "Outcome of most recent combat",
+      "example": "won"
+    },
+
+    "damage_dealt": {
+      "type": "int",
+      "range": [0, 100],
+      "description": "Damage dealt to opponent this round",
+      "example": 8
+    },
+
+    "damage_taken": {
+      "type": "int",
+      "range": [0, 100],
+      "description": "Damage received from opponent this round",
+      "example": 0
+    },
+
+    "total_damage_dealt": {
+      "type": "int",
+      "range": [0, 999],
+      "description": "Cumulative damage dealt across all rounds",
+      "example": 145
+    },
+
+    "total_damage_taken": {
+      "type": "int",
+      "range": [0, 100],
+      "description": "Cumulative damage received across all rounds",
+      "example": 25
+    },
+
+    "opponent_faced": {
+      "type": "int",
+      "range": [0, 7],
+      "description": "Which opponent player faced this round (or -1 for minions)",
+      "example": 2
+    },
+
+    "win_streak": {
+      "type": "int",
+      "range": [0, 10],
+      "description": "Current consecutive wins",
+      "example": 3
+    },
+
+    "loss_streak": {
+      "type": "int",
+      "range": [0, 10],
+      "description": "Current consecutive losses",
+      "example": 0
+    }
+  },
+
+  "board_fields": {
+    "_description": "Fields related to board and units",
+
+    "board_strength": {
+      "type": "float",
+      "description": "Estimated total board strength (sum of unit values)",
+      "example": 850.5
+    },
+
+    "units_count": {
+      "type": "int",
+      "range": [0, 11],
+      "description": "Number of units on board",
+      "example": 6
+    },
+
+    "bench_count": {
+      "type": "int",
+      "range": [0, 9],
+      "description": "Number of units on bench",
+      "example": 3
+    },
+
+    "active_traits": {
+      "type": "list[str]",
+      "description": "List of active trait names",
+      "example": ["Sentinel", "Deadeye", "Sorcerer"]
+    },
+
+    "active_trait_count": {
+      "type": "int",
+      "description": "Number of active traits",
+      "example": 3
+    },
+
+    "three_star_units": {
+      "type": "int",
+      "description": "Number of 3-star units on board",
+      "example": 0
+    },
+
+    "total_items": {
+      "type": "int",
+      "description": "Total items equipped on all units",
+      "example": 8
+    }
+  },
+
+  "economy_fields": {
+    "_description": "Fields related to gold and economy",
+
+    "gold_spent_this_round": {
+      "type": "int",
+      "description": "Gold spent in current planning phase",
+      "example": 12
+    },
+
+    "total_gold_spent": {
+      "type": "int",
+      "description": "Cumulative gold spent across game",
+      "example": 156
+    },
+
+    "interest_earned": {
+      "type": "int",
+      "description": "Interest earned this round",
+      "example": 4
+    },
+
+    "rerolls_this_round": {
+      "type": "int",
+      "description": "Number of shop refreshes this round",
+      "example": 2
+    },
+
+    "units_bought_this_round": {
+      "type": "int",
+      "description": "Number of champions purchased this round",
+      "example": 3
+    },
+
+    "units_sold_this_round": {
+      "type": "int",
+      "description": "Number of champions sold this round",
+      "example": 1
+    }
+  },
+
+  "termination_fields": {
+    "_description": "Fields present only when is_alive=False (player eliminated)",
+
+    "elimination_round": {
+      "type": "int",
+      "description": "Round number when player was eliminated",
+      "example": 23
+    },
+
+    "final_placement": {
+      "type": "int",
+      "range": [1, 8],
+      "description": "Final placement in the game",
+      "example": 5
+    },
+
+    "is_top4": {
+      "type": "bool",
+      "description": "Whether player finished in top 4",
+      "example": false
+    },
+
+    "won_game": {
+      "type": "bool",
+      "description": "Whether player won (1st place)",
+      "example": false
+    },
+
+    "final_board_value": {
+      "type": "float",
+      "description": "Board strength at elimination",
+      "example": 1250.0
+    },
+
+    "cause_of_death": {
+      "type": "str",
+      "options": ["combat_loss", "timeout", "surrender"],
+      "description": "How player was eliminated",
+      "example": "combat_loss"
+    }
+  },
+
+  "example_alive_agent": {
+    "_scenario": "Player 0 mid-game, still alive",
+
+    "info": {
+      "hp": 75,
+      "gold": 42,
+      "level": 6,
+      "xp": 22,
+      "placement": 3,
+      "is_alive": true,
+      "rounds_survived": 15,
+      "action_was_valid": true,
+
+      "combat_result": "won",
+      "damage_dealt": 8,
+      "damage_taken": 0,
+      "total_damage_dealt": 145,
+      "total_damage_taken": 25,
+      "opponent_faced": 2,
+      "win_streak": 3,
+      "loss_streak": 0,
+
+      "board_strength": 850.5,
+      "units_count": 6,
+      "bench_count": 3,
+      "active_traits": ["Sentinel", "Deadeye", "Sorcerer"],
+      "active_trait_count": 3,
+      "three_star_units": 0,
+      "total_items": 8,
+
+      "gold_spent_this_round": 12,
+      "total_gold_spent": 156,
+      "interest_earned": 4,
+      "rerolls_this_round": 2,
+      "units_bought_this_round": 3,
+      "units_sold_this_round": 1
+    }
+  },
+
+  "example_dead_agent": {
+    "_scenario": "Player 3 just eliminated, finished 6th",
+
+    "info": {
+      "hp": 0,
+      "gold": 35,
+      "level": 6,
+      "xp": 28,
+      "placement": 6,
+      "is_alive": false,
+      "rounds_survived": 18,
+      "action_was_valid": true,
+
+      "combat_result": "lost",
+      "damage_dealt": 0,
+      "damage_taken": 14,
+      "total_damage_dealt": 98,
+      "total_damage_taken": 100,
+      "opponent_faced": 5,
+      "win_streak": 0,
+      "loss_streak": 4,
+
+      "board_strength": 720.0,
+      "units_count": 6,
+      "bench_count": 2,
+      "active_traits": ["Bruiser", "Chemtech"],
+      "active_trait_count": 2,
+      "three_star_units": 0,
+      "total_items": 6,
+
+      "gold_spent_this_round": 8,
+      "total_gold_spent": 189,
+
+      "elimination_round": 18,
+      "final_placement": 6,
+      "is_top4": false,
+      "won_game": false,
+      "final_board_value": 720.0,
+      "cause_of_death": "combat_loss"
+    }
+  },
+
+  "example_winner": {
+    "_scenario": "Player 0 won the game (1st place)",
+
+    "info": {
+      "hp": 78,
+      "gold": 55,
+      "level": 9,
+      "xp": 108,
+      "placement": 1,
+      "is_alive": true,
+      "rounds_survived": 32,
+      "action_was_valid": true,
+
+      "combat_result": "won",
+      "damage_dealt": 15,
+      "damage_taken": 0,
+      "total_damage_dealt": 412,
+      "total_damage_taken": 22,
+      "opponent_faced": 1,
+      "win_streak": 9,
+      "loss_streak": 0,
+
+      "board_strength": 2150.0,
+      "units_count": 9,
+      "bench_count": 1,
+      "active_traits": ["Sentinel", "Deadeye", "Bodyguard", "Clockwork"],
+      "active_trait_count": 4,
+      "three_star_units": 1,
+      "total_items": 15,
+
+      "gold_spent_this_round": 0,
+      "total_gold_spent": 342,
+
+      "elimination_round": null,
+      "final_placement": 1,
+      "is_top4": true,
+      "won_game": true,
+      "final_board_value": 2150.0,
+      "cause_of_death": null
+    }
+  },
+
+  "usage_notes": {
+    "for_training": "Info dict is NOT used as input to the neural network",
+    "for_logging": "Use info fields to track training metrics (avg placement, top-4 rate, etc.)",
+    "for_debugging": "Check action_was_valid, combat_result, etc. when debugging policy",
+    "for_analysis": "Aggregate stats across episodes to understand agent behavior",
+
+    "recommended_metrics_to_log": [
+      "Average placement per 100 games",
+      "Top-4 rate (%)",
+      "Win rate (%)",
+      "Average rounds survived",
+      "Average total damage dealt",
+      "Average gold spent per game",
+      "Most common active traits"
+    ]
+  },
+
+  "optional_fields": {
+    "_description": "Additional fields that can be added for specific analysis",
+
+    "suggested_additions": {
+      "comp_archetype": "str (e.g., 'Reroll Sentinels', 'Fast 8 Innovators')",
+      "key_units": "list[str] (main carry champions)",
+      "pivot_round": "int (round when comp was pivoted)",
+      "eco_strategy": "str ('winstreak', 'lossstreak', 'stable')",
+      "hit_key_units": "bool (did we find our carries?)",
+      "contested_comp": "bool (are 2+ players playing same comp?)"
+    }
+  }
+}

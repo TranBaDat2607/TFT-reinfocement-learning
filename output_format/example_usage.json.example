@@ -1,0 +1,370 @@
+{
+  "_comment": "End-to-end example of environment interaction",
+  "_description": "Shows how all the formats work together in a typical game loop",
+
+  "scenario": "Round 5 of TFT game, 8 players all alive",
+
+  "step_1_get_observations": {
+    "_action": "observations = env.observe('player_0')",
+
+    "returned_observation": {
+      "_see": "observation_state.json.example for full structure",
+
+      "global_state": {
+        "_shape": [32],
+        "sample_values": {
+          "stage": 0.143,
+          "round": 0.714,
+          "my_hp": 0.95,
+          "my_gold": 0.18,
+          "my_level": 0.273,
+          "num_alive": 1.0
+        }
+      },
+
+      "units_state": {
+        "_shape": [20, 32],
+        "num_units": 4,
+        "units": [
+          {"champion_id": 15, "star": 1, "cost": 2, "position": [0, 0]},
+          {"champion_id": 8, "star": 1, "cost": 1, "position": [0, 1]},
+          {"champion_id": 23, "star": 2, "cost": 3, "position": [1, 3]},
+          {"champion_id": 38, "star": 1, "cost": 4, "position": [-1, 0]}
+        ]
+      },
+
+      "shop_state": {
+        "_shape": [5, 16],
+        "champions": [
+          {"id": 15, "cost": 2, "can_afford": true},
+          {"id": 51, "cost": 3, "can_afford": false},
+          {"id": 8, "cost": 1, "can_afford": true},
+          {"id": 23, "cost": 3, "can_afford": false},
+          {"id": 12, "cost": 1, "can_afford": true}
+        ]
+      },
+
+      "opponents_state": {
+        "_shape": [7, 24],
+        "opponents": [
+          {"hp": 1.0, "level": 4, "alive": true, "threat": 0.6},
+          {"hp": 0.88, "level": 3, "alive": true, "threat": 0.4},
+          {"hp": 0.92, "level": 4, "alive": true, "threat": 0.7},
+          {"hp": 1.0, "level": 5, "alive": true, "threat": 0.8},
+          {"hp": 0.85, "level": 3, "alive": true, "threat": 0.3},
+          {"hp": 0.95, "level": 4, "alive": true, "threat": 0.65},
+          {"hp": 0.90, "level": 4, "alive": true, "threat": 0.5}
+        ]
+      },
+
+      "encoded_latent": {
+        "_note": "After encoding, this becomes 256-dim vector",
+        "_goes_to": "policy and value networks"
+      }
+    }
+  },
+
+  "step_2_get_action_mask": {
+    "_action": "mask = env.action_space('player_0').get_action_mask(player_0)",
+
+    "returned_mask": {
+      "_see": "action_mask.json.example for full structure",
+
+      "action_type": [true, true, true, true, true, true, false],
+      "_breakdown": {
+        "PASS": true,
+        "BUY_XP": true,
+        "_buy_xp_note": "Has 18 gold (>4), level 3 (<11)",
+        "REFRESH_SHOP": true,
+        "_refresh_note": "Has 18 gold (>2)",
+        "BUY_CHAMPION": true,
+        "_buy_champ_note": "Can afford 1-cost and 2-cost champions",
+        "SELL_CHAMPION": true,
+        "_sell_note": "Has 4 units",
+        "MOVE_CHAMPION": true,
+        "_move_note": "Has 4 units to reposition",
+        "LOCK_SHOP": false,
+        "_lock_note": "Feature disabled"
+      },
+
+      "shop_slot": [true, false, true, false, true],
+      "_shop_breakdown": {
+        "slot_0": true,
+        "_slot_0_note": "2-cost champion, can afford (have 18 gold)",
+        "slot_1": false,
+        "_slot_1_note": "3-cost, cannot afford",
+        "slot_2": true,
+        "slot_3": false,
+        "slot_4": true
+      },
+
+      "sell_position": "37-element array with True at positions 0,1,14,28",
+      "_sell_note": "Units at board (0,0), (0,1), (2,0), bench slot 0",
+
+      "move_from": "Same as sell_position (can move from units you can sell)",
+
+      "move_to": "37-element array with True at empty positions"
+    }
+  },
+
+  "step_3_policy_forward_pass": {
+    "_action": "action = policy.select_action(observation, mask)",
+
+    "neural_network_flow": {
+      "input": "256-dim latent vector (from encoded observation)",
+
+      "policy_network": {
+        "layer_1": "Linear(256 → 128) → LayerNorm → ReLU",
+        "action_type_head": "Linear(128 → 7) → MaskedSoftmax",
+        "shop_slot_head": "Linear(128 → 5) → MaskedSoftmax",
+        "position_head": "Linear(128 → 37) → MaskedSoftmax"
+      },
+
+      "masking": {
+        "_step": "Apply action mask before softmax",
+        "code": "logits = logits.masked_fill(~mask, -1e9)",
+        "result": "Invalid actions get ~0 probability"
+      },
+
+      "sampling": {
+        "action_type_probs": [0.15, 0.05, 0.10, 0.45, 0.15, 0.10, 0.0],
+        "_note": "LOCK_SHOP masked to 0.0",
+        "sampled_action_type": 3,
+        "_sampled_name": "BUY_CHAMPION",
+
+        "shop_slot_probs": [0.35, 0.0, 0.25, 0.0, 0.40],
+        "_note": "Slots 1 and 3 masked (cannot afford)",
+        "sampled_shop_slot": 4,
+        "_sampled_slot": "Buying 1-cost from slot 4"
+      },
+
+      "final_action": {
+        "action_type": 3,
+        "shop_slot": 4,
+        "sell_position": 0,
+        "move_from": 0,
+        "move_to": 0
+      }
+    }
+  },
+
+  "step_4_execute_action": {
+    "_action": "obs, rewards, dones, truncations, infos = env.step(actions)",
+
+    "input_actions": {
+      "player_0": {"action_type": 3, "shop_slot": 4},
+      "player_1": {"action_type": 1},
+      "player_2": {"action_type": 2},
+      "player_3": {"action_type": 0},
+      "player_4": {"action_type": 5, "move_from": 28, "move_to": 7},
+      "player_5": {"action_type": 3, "shop_slot": 0},
+      "player_6": {"action_type": 4, "sell_position": 14},
+      "player_7": {"action_type": 1}
+    },
+
+    "environment_processes": [
+      "1. Execute all player actions (buy/sell/move/level)",
+      "2. Run combat simulation (8 players fight pairwise)",
+      "3. Calculate damage based on combat outcomes",
+      "4. Update player HP",
+      "5. Check for eliminations",
+      "6. Compute rewards",
+      "7. Generate new observations"
+    ],
+
+    "combat_results": {
+      "matchups": [
+        {"player_0": "vs player_3", "result": "player_0 won", "damage": 5},
+        {"player_1": "vs player_5", "result": "player_5 won", "damage": 7},
+        {"player_2": "vs player_6", "result": "player_2 won", "damage": 6},
+        {"player_4": "vs player_7", "result": "draw", "damage": 0}
+      ]
+    }
+  },
+
+  "step_5_receive_results": {
+    "_see": "env_step_return.json.example for full structure",
+
+    "observations": {
+      "player_0": "<new observation dict>",
+      "player_1": "<new observation dict>",
+      "_note": "All 8 players still alive, all get new observations"
+    },
+
+    "rewards": {
+      "_see": "reward.json.example for calculation details",
+
+      "player_0": 0.01,
+      "_player_0_note": "Won combat (small positive reward)",
+
+      "player_1": -0.005,
+      "_player_1_note": "Lost combat (small negative reward)",
+
+      "player_2": 0.01,
+      "player_3": -0.005,
+      "player_4": 0.0,
+      "_player_4_note": "Draw combat (no reward)",
+      "player_5": 0.01,
+      "player_6": -0.005,
+      "player_7": 0.0,
+
+      "_important": "These are small shaping rewards. Main reward comes at game end."
+    },
+
+    "dones": {
+      "player_0": false,
+      "player_1": false,
+      "player_2": false,
+      "player_3": false,
+      "player_4": false,
+      "player_5": false,
+      "player_6": false,
+      "player_7": false,
+      "__all__": false,
+      "_note": "Game continues, no one eliminated yet"
+    },
+
+    "truncations": {
+      "_all_false": "Game not at max rounds yet"
+    },
+
+    "infos": {
+      "_see": "info_metadata.json.example for all fields",
+
+      "player_0": {
+        "hp": 95,
+        "gold": 13,
+        "_gold_note": "Had 18, spent 5 on champion, earned 0 from combat",
+        "level": 3,
+        "placement": 4,
+        "is_alive": true,
+        "rounds_survived": 5,
+        "combat_result": "won",
+        "damage_dealt": 5,
+        "damage_taken": 0,
+        "board_strength": 485.0,
+        "units_count": 5,
+        "_units_note": "Had 4, bought 1 new unit",
+        "gold_spent_this_round": 5,
+        "action_was_valid": true
+      },
+
+      "player_1": {
+        "hp": 93,
+        "_hp_note": "Started at 100, took 7 damage",
+        "gold": 14,
+        "level": 4,
+        "_level_note": "Bought XP, leveled up 3→4",
+        "placement": 6,
+        "combat_result": "lost",
+        "damage_dealt": 0,
+        "damage_taken": 7,
+        "units_count": 4,
+        "action_was_valid": true
+      }
+    }
+  },
+
+  "step_6_training_update": {
+    "_description": "How this data is used for PPO training",
+
+    "trajectory_storage": {
+      "observation_t": "observation from step 1",
+      "action_t": "action from step 3",
+      "reward_t": "0.01 (from step 5)",
+      "done_t": false,
+      "value_t": "V(observation_t) from critic network",
+      "log_prob_t": "log π(action_t | observation_t)"
+    },
+
+    "advantage_calculation": {
+      "_after_episode_ends": "Compute GAE advantages",
+      "td_error": "δ_t = r_t + γ*V(s_{t+1}) - V(s_t)",
+      "advantage": "A_t = Σ (γλ)^k * δ_{t+k}",
+      "return": "R_t = A_t + V(s_t)"
+    },
+
+    "policy_update": {
+      "ratio": "π_new(a_t|s_t) / π_old(a_t|s_t)",
+      "clipped_objective": "min(ratio*A_t, clip(ratio,1-ε,1+ε)*A_t)",
+      "policy_loss": "-mean(clipped_objective)",
+      "gradient_step": "Update policy network weights"
+    },
+
+    "value_update": {
+      "value_loss": "MSE(V(s_t), R_t)",
+      "gradient_step": "Update critic network weights"
+    }
+  },
+
+  "game_end_example": {
+    "_scenario": "Round 25, player_3 eliminated",
+
+    "step_return": {
+      "observations": {
+        "player_0": "<observation>",
+        "_note": "Player 3 eliminated, doesn't get new observation"
+      },
+
+      "rewards": {
+        "player_0": 0.01,
+        "player_1": 0.01,
+        "player_2": -0.005,
+        "player_3": -0.25,
+        "_player_3_note": "PLACEMENT REWARD: 6th place = -0.25",
+        "player_4": 0.01,
+        "player_5": -0.005,
+        "player_6": 0.01,
+        "player_7": -0.005
+      },
+
+      "dones": {
+        "player_0": false,
+        "player_1": false,
+        "player_2": false,
+        "player_3": true,
+        "_player_3_note": "ELIMINATED",
+        "player_4": false,
+        "player_5": false,
+        "player_6": false,
+        "player_7": false,
+        "__all__": false,
+        "_all_note": "7 players still alive, game continues"
+      },
+
+      "infos": {
+        "player_3": {
+          "hp": 0,
+          "placement": 6,
+          "is_alive": false,
+          "elimination_round": 25,
+          "final_placement": 6,
+          "is_top4": false,
+          "total_damage_dealt": 145,
+          "total_damage_taken": 100,
+          "cause_of_death": "combat_loss"
+        }
+      }
+    }
+  },
+
+  "summary": {
+    "key_takeaways": [
+      "Observations are dict with 4 numpy arrays (global, units, shop, opponents)",
+      "Action masks prevent invalid actions (set to -inf before softmax)",
+      "Rewards are mostly sparse (placement at end) with optional combat shaping",
+      "env.step() returns observations, rewards, dones, truncations, infos",
+      "Info dict contains metadata for logging (not used in training)",
+      "All data structures are documented in corresponding .json.example files"
+    ],
+
+    "refer_to_files": [
+      "observation_state.json.example - Full observation structure",
+      "action_mask.json.example - Masking rules",
+      "reward.json.example - Reward calculation",
+      "env_step_return.json.example - Complete step() return",
+      "info_metadata.json.example - Info dict fields",
+      "README.md - Overview and quick reference"
+    ]
+  }
+}
