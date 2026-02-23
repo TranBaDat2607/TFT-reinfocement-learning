@@ -44,7 +44,8 @@ class Champion:
     attack_speed: float = 0
     critical_chance: float = 0
     critical_damage: float = 0
-    
+    attack_range: float = 0
+
     # Mana
     current_mana: float = 0
     max_mana: float = 0
@@ -88,8 +89,9 @@ class Champion:
         self.armor = self.data.stats.armor or 20
         self.magic_resist = self.data.stats.magic_resist or 20
         
-        # Attack speed and crit
+        # Attack speed, range, and crit
         self.attack_speed = self.data.stats.attack_speed or 0.6
+        self.attack_range = self.data.stats.attack_range or 1
         self.critical_chance = self.data.stats.crit_chance or 0.25
         self.critical_damage = self.data.stats.crit_multiplier or 1.4
         

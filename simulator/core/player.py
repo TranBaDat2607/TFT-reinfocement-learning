@@ -68,6 +68,9 @@ class Player:
         
         # Trait cache (recomputed when board changes)
         self.active_traits: Dict[str, int] = {}
+
+        # Augments (Phase 4+)
+        self.selected_augments: List = []  # List[Augment]
     
     # ===== Economy Actions =====
     
@@ -400,6 +403,18 @@ class Player:
         for champion in self.board.get_all_champions():
             champion.reset_for_combat()
     
+    # ===== Augments =====
+
+    def select_augment(self, augment) -> None:
+        """
+        Apply an augment to this player (called at rounds 6, 13, 20).
+
+        Fires the augment's on_select hook immediately.
+        """
+        from simulator.env.augment_effects import apply_augment_hook
+        self.selected_augments.append(augment)
+        apply_augment_hook(self, augment, "on_select")
+
     # ===== Traits =====
     
     def update_active_traits(self):
