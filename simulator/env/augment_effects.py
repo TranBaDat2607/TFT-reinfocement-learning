@@ -34,7 +34,7 @@ Usage
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional
 
 if TYPE_CHECKING:
     from simulator.core.champion import Champion
@@ -185,35 +185,49 @@ def _artillery_barrage_passive(player: "Player", effects: Dict[str, Any]) -> Aug
 
 
 # ---------------------------------------------------------------------------
-# Stage Boost  (TFT_Augment_StageBoost)
+# Epoch  (TFT16_Augment_Epoch)
 #
 #   "Now, and at the start of every stage, gain 4 XP and 3 free rerolls."
+#   Offered only at 2-1 (augment selection round 6).
 #
 #   effects = {"XPAmount": 4, "RerollCount": 3}
-#
-# NOTE: Replace "TFT_Augment_StageBoost" with the real augment API name once
-#       the data entry exists.
 # ---------------------------------------------------------------------------
 
-def _stage_boost_apply(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+def _epoch_apply(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
     """Grant free XP and free rerolls — shared by on_select and on_stage_start."""
     xp_amount: int = int(effects.get("XPAmount", 4))
     reroll_count: int = int(effects.get("RerollCount", 3))
 
     player.xp += xp_amount
     player._check_level_up()
-
     player.free_rerolls += reroll_count
 
     return AugmentResult(success=True, xp_delta=xp_amount, rerolls_granted=reroll_count)
 
 
-def _stage_boost_on_select(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
-    return _stage_boost_apply(player, effects)
+def _epoch_on_select(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+    return _epoch_apply(player, effects)
 
 
-def _stage_boost_on_stage_start(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
-    return _stage_boost_apply(player, effects)
+def _epoch_on_stage_start(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+    return _epoch_apply(player, effects)
+
+
+# ---------------------------------------------------------------------------
+# Epoch+  (TFT16_Augment_EpochPlus)
+#
+#   "Now, and at the start of every stage, gain 8 XP and 3 free rerolls."
+#   Offered only at 3-2 (augment selection round 13).
+#
+#   effects = {"XPAmount": 8, "RerollCount": 3}
+# ---------------------------------------------------------------------------
+
+def _epoch_plus_on_select(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+    return _epoch_apply(player, effects)
+
+
+def _epoch_plus_on_stage_start(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+    return _epoch_apply(player, effects)
 
 
 # ---------------------------------------------------------------------------
@@ -225,10 +239,60 @@ AUGMENT_REGISTRY: Dict[str, Dict[str, Any]] = {
         "on_select": _artillery_barrage_on_select,
         "passive":   _artillery_barrage_passive,
     },
-    "TFT_Augment_StageBoost": {
-        "on_select":       _stage_boost_on_select,
-        "on_stage_start":  _stage_boost_on_stage_start,
+    "TFT16_Augment_Epoch": {
+        "on_select":      _epoch_on_select,
+        "on_stage_start": _epoch_on_stage_start,
     },
+    "TFT16_Augment_EpochPlus": {
+        "on_select":      _epoch_plus_on_select,
+        "on_stage_start": _epoch_plus_on_stage_start,
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Synthetic augments
+#
+# Augments not present in the crawled JSON data but with implemented hooks.
+# These are merged into the selection pool by get_eligible_augments().
+# ---------------------------------------------------------------------------
+
+SYNTHETIC_AUGMENTS: List[Augment] = [
+    Augment(
+        augment_id="TFT16_Augment_Epoch",
+        name="Epoch",
+        description="Now, and at the start of every stage, gain 4 XP and 3 free rerolls.",
+        effects={"XPAmount": 4, "RerollCount": 3},
+        associated_traits=[],
+        incompatible_traits=[],
+        tags=[],
+        is_unique=False,
+        icon="",
+    ),
+    Augment(
+        augment_id="TFT16_Augment_EpochPlus",
+        name="Epoch+",
+        description="Now, and at the start of every stage, gain 8 XP and 3 free rerolls.",
+        effects={"XPAmount": 8, "RerollCount": 3},
+        associated_traits=[],
+        incompatible_traits=[],
+        tags=[],
+        is_unique=False,
+        icon="",
+    ),
+]
+
+# ---------------------------------------------------------------------------
+# Round eligibility
+#
+# Maps augment_id -> frozenset of augment-selection round numbers where the
+# augment may be offered.  Augments absent from this dict are unrestricted
+# and may appear at any selection round.
+# ---------------------------------------------------------------------------
+
+AUGMENT_ELIGIBLE_ROUNDS: Dict[str, FrozenSet[int]] = {
+    "TFT16_Augment_Epoch":     frozenset({10}),  # 2-1 only (round 10)
+    "TFT16_Augment_EpochPlus": frozenset({20}),  # 3-2 only (round 20)
 }
 
 
@@ -286,3 +350,53 @@ def apply_all_stage_start_hooks(player: "Player") -> None:
     """
     for augment in player.selected_augments:
         apply_augment_hook(player, augment, "on_stage_start")
+
+
+def get_eligible_augments(
+    round_number: int,
+    data_augments: List[Augment],
+) -> List[Augment]:
+    """
+    Return all augments that may be offered at the given selection round.
+
+    The candidate pool is the union of data_augments (from TFTDataLoader) and
+    SYNTHETIC_AUGMENTS (augments implemented in code but absent from the JSON).
+    Duplicates (same augment_id in both lists) are deduplicated, with the
+    synthetic entry taking precedence so effects are always up-to-date.
+
+    An augment with an entry in AUGMENT_ELIGIBLE_ROUNDS is only included when
+    round_number is in its frozenset.  Augments without an entry are
+    unrestricted and appear at every selection round.
+
+    Args:
+        round_number:  The current augment-selection round (e.g. 6, 13, or 20).
+        data_augments: Augments loaded from the JSON data file.
+
+    Returns:
+        List of eligible Augment objects for this round.
+    """
+    # Synthetic augments take priority — build a lookup by id first.
+    synthetic_by_id: Dict[str, Augment] = {a.augment_id: a for a in SYNTHETIC_AUGMENTS}
+
+    seen: set = set()
+    candidates: List[Augment] = []
+
+    # Synthetic augments first so they shadow any data duplicate.
+    for aug in SYNTHETIC_AUGMENTS:
+        seen.add(aug.augment_id)
+        candidates.append(aug)
+
+    # Then data augments, skipping ids already covered by synthetics.
+    for aug in data_augments:
+        if aug.augment_id not in seen:
+            seen.add(aug.augment_id)
+            candidates.append(aug)
+
+    # Filter by round eligibility.
+    eligible: List[Augment] = []
+    for aug in candidates:
+        restriction = AUGMENT_ELIGIBLE_ROUNDS.get(aug.augment_id)
+        if restriction is None or round_number in restriction:
+            eligible.append(aug)
+
+    return eligible

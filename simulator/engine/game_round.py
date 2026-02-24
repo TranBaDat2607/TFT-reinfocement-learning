@@ -335,7 +335,9 @@ class GameRound:
     def advance_round(self):
         """Advance to next round."""
         self.current_round += 1
-        self.current_stage = ((self.current_round - 1) // 7) + 1
+        self.current_stage = (
+            sum(1 for c in GameConstants.CAROUSEL_ROUNDS if self.current_round > c) + 1
+        )
 
     def is_game_over(self) -> bool:
         """Check if game is over."""

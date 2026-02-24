@@ -274,10 +274,25 @@ class TFTEventEngine(EventEngine):
 
     # ===== Event handlers =====
 
+    @staticmethod
+    def _compute_stage(round_number: int) -> int:
+        """
+        Compute the current stage from the round number.
+
+        Stage boundaries are defined by carousel rounds.  Every time a
+        carousel round is passed the stage increments:
+            Stage 1 = rounds  1-9   (before first carousel at round 9)
+            Stage 2 = rounds 10-18  (between carousels 9 and 18)
+            Stage 3 = rounds 19-27  (between carousels 18 and 27)
+            Stage 4 = rounds 28-36  (between carousels 27 and 36)
+            ...
+        """
+        return sum(1 for c in GameConstants.CAROUSEL_ROUNDS if round_number > c) + 1
+
     def _handle_start_planning(self, event: Event) -> Dict[str, Any]:
         """Handle start of planning phase."""
         self.current_round += 1
-        new_stage = ((self.current_round - 1) // 7) + 1
+        new_stage = self._compute_stage(self.current_round)
         is_new_stage = new_stage != self.current_stage
         self.current_stage = new_stage
 
@@ -309,12 +324,24 @@ class TFTEventEngine(EventEngine):
                 'round_type': round_type,
             }
 
-        # Normal and minion rounds: run planning phase
+        # Run planning setup: gold, shops, round-1 champion grant, etc.
         self.game_round.start_planning_phase()
 
         alive_players = [p for p in self.players if p.is_alive]
 
-        if alive_players:
+        if not alive_players:
+            self.schedule_event(self.current_time + 0.1, EventType.GAME_END, -1)
+        elif (self.current_round in GameConstants.AUGMENT_ROUNDS
+              and self.config.enable_augments):
+            # Augment selection fires at the START of the planning phase,
+            # before players take any shop/unit actions.
+            self.schedule_event(
+                self.current_time + 0.1,
+                EventType.AUGMENT_SELECTION,
+                -1,
+                {'round': self.current_round, 'round_type': round_type}
+            )
+        else:
             self.schedule_event(
                 self.current_time + 0.1,
                 EventType.PLAYER_ACTION_REQUIRED,
@@ -325,8 +352,6 @@ class TFTEventEngine(EventEngine):
                     'round_type': round_type,
                 }
             )
-        else:
-            self.schedule_event(self.current_time + 0.1, EventType.GAME_END, -1)
 
         return {
             'event': 'start_planning',
@@ -354,21 +379,14 @@ class TFTEventEngine(EventEngine):
         """Handle end of planning phase."""
         self.game_round.end_planning_phase()
 
-        # At augment rounds, schedule augment selection before combat
-        if (self.current_round in GameConstants.AUGMENT_ROUNDS
-                and self.config.enable_augments):
-            self.schedule_event(
-                self.current_time + 0.1,
-                EventType.AUGMENT_SELECTION,
-                -1,
-                {'round': self.current_round}
-            )
-        else:
-            self.schedule_event(
-                self.current_time + 0.1,
-                EventType.START_COMBAT,
-                -1
-            )
+        # Augment selection always fires at START_PLANNING, so by the time
+        # END_PLANNING fires the augments have already been chosen.
+        # Always proceed straight to combat.
+        self.schedule_event(
+            self.current_time + 0.1,
+            EventType.START_COMBAT,
+            -1
+        )
 
         return {'event': 'end_planning'}
 
@@ -437,35 +455,57 @@ class TFTEventEngine(EventEngine):
 
     def _handle_augment_selection(self, event: Event) -> Dict[str, Any]:
         """
-        Handle augment selection at rounds 6, 13, 20.
+        Handle augment selection at rounds 10, 20, 29 (2-1, 3-2, 4-2).
+
+        Augment selection fires at the START of the planning phase, before
+        players take any shop or unit-management actions.  After all players
+        have picked, the normal planning phase continues (PLAYER_ACTION_REQUIRED).
+
+        Eligible augments are filtered by round number so that, e.g., Epoch
+        only appears at 2-1 and Epoch+ only at 3-2.  Synthetic augments
+        (implemented in code but absent from the data JSON) are merged in.
 
         For MVP: each alive player auto-selects a random augment from 3 offered.
         Fires the augment's on_select hook immediately.
-        After all players pick, schedules START_COMBAT.
         """
-        all_augments = list(self.pool.data_loader.augments.values()) if self.pool else []
+        from simulator.env.augment_effects import get_eligible_augments
+
+        data_augments = list(self.pool.data_loader.augments.values()) if self.pool else []
+        eligible = get_eligible_augments(self.current_round, data_augments)
 
         for player in self.players:
             if not player.is_alive:
                 continue
 
-            if not all_augments:
+            if not eligible:
                 break
 
             # Offer 3 distinct augments
-            sample_size = min(3, len(all_augments))
-            offered = random.sample(all_augments, sample_size)
+            sample_size = min(3, len(eligible))
+            offered = random.sample(eligible, sample_size)
 
             # Auto-select a random one
             chosen = random.choice(offered)
             player.select_augment(chosen)
 
-        # Proceed to combat
-        self.schedule_event(
-            self.current_time + 0.1,
-            EventType.START_COMBAT,
-            -1
-        )
+        # After augment selection, hand control back to players for the
+        # rest of the planning phase (shop, buy/sell/move units).
+        alive_players = [p for p in self.players if p.is_alive]
+        round_type = event.data.get('round_type', 'combat')
+
+        if alive_players:
+            self.schedule_event(
+                self.current_time + 0.1,
+                EventType.PLAYER_ACTION_REQUIRED,
+                alive_players[0].player_id,
+                {
+                    'phase': 'planning',
+                    'players_remaining': [p.player_id for p in alive_players],
+                    'round_type': round_type,
+                }
+            )
+        else:
+            self.schedule_event(self.current_time + 0.1, EventType.GAME_END, -1)
 
         return {
             'event': 'augment_selection',

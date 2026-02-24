@@ -322,7 +322,13 @@ class GameConstants:
     MINION_ROUNDS = [1, 2, 3]
     
     # Augment rounds (Set 16 specific)
-    AUGMENT_ROUNDS = [6, 13, 20]  # 2-1, 3-2, 4-1
+    # Stage boundaries follow carousel rounds [9, 18, 27, 36]:
+    #   Stage 1 = rounds  1-9   (minion + PvP + carousel)
+    #   Stage 2 = rounds 10-18  (PvP + carousel)
+    #   Stage 3 = rounds 19-27  (PvP + carousel)
+    #   Stage 4 = rounds 28-36  (PvP + carousel)
+    # Augment selections are at 2-1 (round 10), 3-2 (round 20), 4-2 (round 29).
+    AUGMENT_ROUNDS = [10, 20, 29]
 
 
 if __name__ == "__main__":
