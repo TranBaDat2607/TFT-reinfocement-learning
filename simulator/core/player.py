@@ -47,7 +47,8 @@ class Player:
         self.health = config.starting_health
         self.level = config.starting_level
         self.xp = 0
-        
+        self.free_rerolls: int = 0
+
         # Units
         self.board = Board()
         self.bench: List[Optional[Champion]] = [None] * config.bench_size
@@ -129,17 +130,21 @@ class Player:
     
     def refresh_shop(self) -> bool:
         """
-        Refresh shop for 2 gold.
-        
+        Refresh shop for 2 gold, or free if the player has free rerolls.
+
         Returns:
-            True if successful, False if not enough gold
+            True if successful, False if not enough gold and no free rerolls
         """
+        if self.free_rerolls > 0:
+            self.free_rerolls -= 1
+            self._generate_shop()
+            return True
+
         if self.gold < self.config.shop_refresh_cost:
             return False
-        
+
         self.gold -= self.config.shop_refresh_cost
         self.gold_spent += self.config.shop_refresh_cost
-        
         self._generate_shop()
         return True
     

@@ -91,9 +91,9 @@ class ActionSpace:
             player.level < self.config.max_level
         )
 
-        # REFRESH_SHOP: requires 2 gold
+        # REFRESH_SHOP: requires 2 gold, or a free reroll
         action_type_mask[ActionType.REFRESH_SHOP] = (
-            player.gold >= self.config.shop_refresh_cost
+            player.gold >= self.config.shop_refresh_cost or player.free_rerolls > 0
         )
 
         # BUY_CHAMPION: at least one affordable champion in shop

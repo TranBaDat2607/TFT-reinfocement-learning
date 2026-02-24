@@ -68,6 +68,10 @@ class AugmentResult:
     """Gold given (or taken) by this hook call."""
     affected_champions: List[str] = field(default_factory=list)
     """Display names of champions whose stats were modified."""
+    xp_delta: int = 0
+    """XP granted (free, no gold cost) by this hook call."""
+    rerolls_granted: int = 0
+    """Free shop rerolls added to the player by this hook call."""
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +185,38 @@ def _artillery_barrage_passive(player: "Player", effects: Dict[str, Any]) -> Aug
 
 
 # ---------------------------------------------------------------------------
+# Stage Boost  (TFT_Augment_StageBoost)
+#
+#   "Now, and at the start of every stage, gain 4 XP and 3 free rerolls."
+#
+#   effects = {"XPAmount": 4, "RerollCount": 3}
+#
+# NOTE: Replace "TFT_Augment_StageBoost" with the real augment API name once
+#       the data entry exists.
+# ---------------------------------------------------------------------------
+
+def _stage_boost_apply(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+    """Grant free XP and free rerolls — shared by on_select and on_stage_start."""
+    xp_amount: int = int(effects.get("XPAmount", 4))
+    reroll_count: int = int(effects.get("RerollCount", 3))
+
+    player.xp += xp_amount
+    player._check_level_up()
+
+    player.free_rerolls += reroll_count
+
+    return AugmentResult(success=True, xp_delta=xp_amount, rerolls_granted=reroll_count)
+
+
+def _stage_boost_on_select(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+    return _stage_boost_apply(player, effects)
+
+
+def _stage_boost_on_stage_start(player: "Player", effects: Dict[str, Any]) -> AugmentResult:
+    return _stage_boost_apply(player, effects)
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -188,6 +224,10 @@ AUGMENT_REGISTRY: Dict[str, Dict[str, Any]] = {
     "TFT16_Augment_RumbleCarry": {
         "on_select": _artillery_barrage_on_select,
         "passive":   _artillery_barrage_passive,
+    },
+    "TFT_Augment_StageBoost": {
+        "on_select":       _stage_boost_on_select,
+        "on_stage_start":  _stage_boost_on_stage_start,
     },
 }
 
@@ -235,3 +275,14 @@ def apply_all_passives(player: "Player") -> None:
     """
     for augment in player.selected_augments:
         apply_augment_hook(player, augment, "passive")
+
+
+def apply_all_stage_start_hooks(player: "Player") -> None:
+    """
+    Fire on_stage_start hooks for every augment the player holds.
+
+    Call this in the event engine whenever the stage number increases
+    (including the very first stage).
+    """
+    for augment in player.selected_augments:
+        apply_augment_hook(player, augment, "on_stage_start")

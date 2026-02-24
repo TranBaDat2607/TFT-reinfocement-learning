@@ -272,12 +272,21 @@ class TFTEventEngine(EventEngine):
     def _handle_start_planning(self, event: Event) -> Dict[str, Any]:
         """Handle start of planning phase."""
         self.current_round += 1
-        self.current_stage = ((self.current_round - 1) // 7) + 1
-        
+        new_stage = ((self.current_round - 1) // 7) + 1
+        is_new_stage = new_stage != self.current_stage
+        self.current_stage = new_stage
+
         # Start planning for all alive players
         self.game_round.current_round = self.current_round
         self.game_round.current_stage = self.current_stage
         self.game_round.start_planning_phase()
+
+        # Fire on_stage_start hooks for every player when the stage changes
+        if is_new_stage:
+            from simulator.env.augment_effects import apply_all_stage_start_hooks
+            for player in self.players:
+                if player.is_alive:
+                    apply_all_stage_start_hooks(player)
         
         # Schedule decision point for each player
         # In event-driven, we ask each player to act sequentially
@@ -492,7 +501,7 @@ class TFTEventEngine(EventEngine):
         if player.gold >= 4:
             valid_actions.append('buy_xp')
         
-        if player.gold >= 2:
+        if player.gold >= 2 or player.free_rerolls > 0:
             valid_actions.append('refresh_shop')
         
         # Can buy from shop if affordable
