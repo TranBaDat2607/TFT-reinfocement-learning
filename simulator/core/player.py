@@ -54,9 +54,9 @@ class Player:
         self.bench: List[Optional[Champion]] = [None] * config.bench_size
         self.shop: List[Optional[str]] = [None] * config.shop_size
         
-        # Items (Phase 2+)
-        self.items: List[str] = []
-        
+        # Items: 10-slot item bench holding component IDs (strings)
+        self.item_bench: List[Optional[str]] = [None] * 20
+
         # Game state
         self.is_alive = True
         self.placement = 0  # Final placement (1-8)
@@ -66,6 +66,10 @@ class Player:
         self.total_damage_dealt = 0
         self.total_damage_taken = 0
         self.rounds_survived = 0
+
+        # Win/loss streak tracking
+        self.win_streak: int = 0
+        self.loss_streak: int = 0
         
         # Trait cache (recomputed when board changes)
         self.active_traits: Dict[str, int] = {}
@@ -122,9 +126,48 @@ class Player:
         return interest
     
     def start_of_round_gold(self):
-        """Give gold at start of planning phase."""
+        """Give gold at start of planning phase (base + interest + streak bonus)."""
         self.gold += self.config.gold_per_round
         self.gain_interest()
+        self.gold += self._streak_gold_bonus()
+
+    def _streak_gold_bonus(self) -> int:
+        """
+        Gold bonus from win or loss streak.
+
+        Streak length  2-3 → +1 gold
+        Streak length  4   → +2 gold
+        Streak length  5+  → +3 gold
+        """
+        streak = max(self.win_streak, self.loss_streak)
+        if streak >= 5:
+            return 3
+        if streak == 4:
+            return 2
+        if streak >= 2:
+            return 1
+        return 0
+
+    def update_streak(self, won: bool) -> None:
+        """Update win/loss streak after a combat result."""
+        if won:
+            self.win_streak += 1
+            self.loss_streak = 0
+        else:
+            self.loss_streak += 1
+            self.win_streak = 0
+
+    def grant_item_component(self, item_id: str) -> bool:
+        """
+        Add an item component to the item bench.
+
+        Returns True if added, False if bench is full.
+        """
+        for i, slot in enumerate(self.item_bench):
+            if slot is None:
+                self.item_bench[i] = item_id
+                return True
+        return False
     
     # ===== Shop Actions =====
     
@@ -460,4 +503,7 @@ class Player:
             "board_count": self.board.count_champions(),
             "bench_count": sum(1 for c in self.bench if c),
             "active_traits": list(self.active_traits.keys()),
+            "win_streak": self.win_streak,
+            "loss_streak": self.loss_streak,
+            "item_bench": [s for s in self.item_bench if s is not None],
         }

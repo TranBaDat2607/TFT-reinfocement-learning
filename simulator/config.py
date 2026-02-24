@@ -316,10 +316,10 @@ class GameConstants:
     MAX_COMBAT_TIME = 30.0  # seconds
     
     # Carousel
-    CAROUSEL_ROUNDS = [1, 9, 18, 27, 36]  # Rounds with carousel
-    
-    # Minion rounds
-    MINION_ROUNDS = [2, 3]
+    CAROUSEL_ROUNDS = [9, 18, 27, 36]  # Rounds with carousel (no opening carousel in Set 16)
+
+    # Minion rounds (rounds 1-3 are PvE minion rounds)
+    MINION_ROUNDS = [1, 2, 3]
     
     # Augment rounds (Set 16 specific)
     AUGMENT_ROUNDS = [6, 13, 20]  # 2-1, 3-2, 4-1

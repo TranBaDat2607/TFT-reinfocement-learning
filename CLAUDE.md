@@ -39,12 +39,13 @@ Policy Network (PyTorch)
     ↕
 RL Environment (tft_env.py — TODO)
     ↕ observations / actions / rewards
-Event Engine (rl_env/event_engine.py)   ← event-driven, priority queue
+Event Engine (simulator/rl_env/event_engine.py)   ← event-driven, priority queue
     ↕
 Core Simulator (simulator/)
     ├── config.py        — phased config: MVP → Training → Full
     ├── core/            — Player, Board (4×7 hex), Champion, Pool
     ├── engine/          — combat.py (statistical mode), game_round.py
+    ├── rl_env/          — event_engine.py (TFTEventEngine)
     └── env/action.py    — hierarchical action space + masking
 ```
 
