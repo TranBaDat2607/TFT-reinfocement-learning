@@ -1,105 +1,141 @@
 import requests
 import json
 import os
+import re
 
-def get_community_dragon_data():
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Keyword / path exclusion lists
+# ──────────────────────────────────────────────────────────────────────────────
+
+# apiName substrings that disqualify an entry immediately
+_EXCL_API_KEYWORDS = [
+    'Augment',          # augments (all variants)
+    'TeamupAugment',
+    'Grant',            # GrantOrbs*, GrantOrnn*, GrantRadiant* (loot bundles)
+    'Carousel',         # CarouselOfChaos_* novelty items
+    'CarouselOfChaos',
+    'Selector',         # FreljordSelector and other trait-event selectors
+    'SystemItem',       # internal engine objects
+    'Portal',           # portal objects
+    'Unlock',           # unlock-condition tokens
+]
+
+# icon path substrings that disqualify an entry
+_EXCL_ICON_PATHS = [
+    '/Augments/',               # augment icons
+    'Characters/',              # champion portrait used as icon (e.g. Ornn anvil)
+    'Particles/TFT/Item_Icons/TFT16/',  # Set-16 trait-event selector icons
+    'TFT_CT/',                  # Choncc's trophy / CT meta items
+    '/CT/',
+    'Pairs/Assist',             # loot-orb carousel icons
+]
+
+
+def is_equippable_item(item: dict) -> bool:
     """
-    Get detailed TFT data from Community Dragon
+    Return True only for items that can actually be equipped on a champion:
+      - Standard components       (TFT_Item_BFSword, TFT_Item_ChainVest …)
+      - Completed / crafted items (TFT_Item_InfinityEdge …)
+      - Artifact / Ornn items     (TFT_Item_Artifact_*)
+      - Support items             (TFT_Item_Support*)
+      - Corrupted / dark items    (TFT_Item_Corrupted*)
+      - Set-16 trait emblems      (TFT16_Item_*EmblemItem)
+
+    Everything else is excluded: augments, loot orbs, grant-effect tokens,
+    carousel novelties, champion/trait buffs, portal objects, etc.
     """
+    api_name  = item.get('apiName', '')
+    icon_path = item.get('icon',    '') or ''
+
+    # 1. Keyword exclusions on apiName
+    if any(kw in api_name for kw in _EXCL_API_KEYWORDS):
+        return False
+
+    # 2. Icon-path exclusions
+    if any(p in icon_path for p in _EXCL_ICON_PATHS):
+        return False
+
+    # 3. Must live in the game's real Items asset folder
+    #    e.g.  ASSETS/Maps/TFT/Icons/Items/Hexcore/TFT_Item_BFSword.TFT_Set13.tex
+    #    Emblems live elsewhere but have a clear apiName pattern.
+    in_items_folder = '/Items/' in icon_path
+    is_emblem       = api_name.startswith('TFT16_Item_') and 'EmblemItem' in api_name
+
+    if not (in_items_folder or is_emblem):
+        return False
+
+    # 4. apiName must match a known equippable prefix
+    if not re.match(r'^(TFT_Item_|TFT16_Item_\w+EmblemItem)', api_name):
+        return False
+
+    return True
+
+
+def get_community_dragon_data() -> dict:
+    """Fetch the full TFT data blob from Community Dragon."""
     url = "https://raw.communitydragon.org/latest/cdragon/tft/en_us.json"
     response = requests.get(url)
+    response.raise_for_status()
     return response.json()
 
-def extract_all_items(cdragon_data):
-    """
-    Extract Set 16 and Standard Items
-    Filters based on apiName patterns:
-    - Include: 'TFT16' (Set 16 specific) or 'TFT_Item' (Standard/Core items)
-    - Exclude: Other set prefixes like 'TFT13', 'TFT14', 'TFT15', 'Set13', etc.
-    """
-    all_items = cdragon_data.get('items', [])
-    filtered_items = []
-    
-    # Prefixes to explicitly exclude (older sets)
-    # We'll check if an item starts with these, but NOT if it also matches our include criteria
-    # Actually, simpler logic:
-    # 1. Must match include patterns
-    # 2. Must NOT be clearly part of another set (unless it's a standard reuse, but apiName usually changes if it's set-specific)
-    
-    for item in all_items:
-        api_name = item.get('apiName', '')
-        icon_path = item.get('icon', '') or ''
-        
-        # Criteria for Set 16 Relevance:
-        # A. Clearly Set 16 specific
-        is_set16 = 'TFT16' in api_name or 'Set16' in api_name or 'Set16' in icon_path
-        
-        # B. Standard/Core Item (usually starts with TFT_Item_)
-        # Note: Some standard items might maintain old IDs (e.g. TFT5_Item_Redemption), but usually standard items are TFT_Item
-        # Let's keep things that look like core items and aren't augment-specific from old sets
-        is_standard = 'TFT_Item_' in api_name
-        
-        # C. Exclude items that are definitely from other sets and NOT standard
-        # (e.g. TFT13_Augment, TFT4_Item)
-        # If it has a specific set number that ISN'T 16, and ISN'T a standard prefix we trust
-        is_other_set = False
-        import re
-        # Look for TFT[number] where number is NOT 16
-        # Matches TFT13, TFT5, etc.
-        set_match = re.search(r'TFT(\d+)', api_name)
-        if set_match:
-            set_num = int(set_match.group(1))
-            if set_num != 16:
-                is_other_set = True
-                
-        # Special case: Some standard items have old set tags but are reused (like TFT5_Item_Redemption might be the standard ID)
-        # However, usually there's a TFT_Item version for the generic one.
-        # Let's stick to: Keep if Set16 OR (Standard AND NOT Other Set specific augment/trait item)
-        
-        # Refined Logic:
-        # Keep if matches Set 16
-        # OR matches TFT_Item (Standard)
-        if is_set16 or (is_standard and not is_other_set):
-             filtered_items.append(item)
-        # Also include items that might be standard but have old set prefixes IF they are core items?
-        # For safety, let's stick to the cleanest filter first. 
-        # If the user sees missing items, we can broaden.
-        
-        # Check for 'TFT_Item' but exclude if it has another set number in it?
-        # Actually, standard items are usually just 'TFT_Item_...'. 
-        
-        # Let's add one more catch: items with no numeric set code in apiName might be standard
-        elif 'TFT_Item' in api_name:
-             # This catches TFT_Item_... that don't have a number
-             filtered_items.append(item)
 
+def extract_equippable_items(cdragon_data: dict) -> dict:
+    """
+    Filter the raw Community Dragon items array down to only the items that
+    a player can equip on a champion in Set 16:
+
+      1. Standard components      — BF Sword, Chain Vest, Recurve Bow …
+      2. Completed (crafted) items — Infinity Edge, Warmog's Armor …
+      3. Artifact / Ornn items    — Zz'Rot Portal, Deathfire Grasp …
+      4. Support items            — Knight's Vow, Zeke's Herald …
+      5. Corrupted / dark items   — alternate stat variants
+      6. Trait emblems            — Spatula-crafted emblem items (Set 16 only)
+    """
+    all_items  = cdragon_data.get('items', [])
+    equippable = [item for item in all_items if is_equippable_item(item)]
     return {
-        'items': filtered_items,
-        'total_items': len(filtered_items)
+        'items':       equippable,
+        'total_items': len(equippable),
     }
+
 
 def main():
     print("Fetching Community Dragon data...")
     cdragon_data = get_community_dragon_data()
-    
-    print("Extracting items...")
-    items_info = extract_all_items(cdragon_data)
-    
+
+    print("Extracting equippable items only...")
+    items_info = extract_equippable_items(cdragon_data)
+
     if items_info['items']:
-        # Save to organized data directory
-        output_dir = os.path.join('..', 'data', 'set16')
+        output_dir  = os.path.join('..', 'data', 'set16')
         output_file = os.path.join(output_dir, 'items.json')
-        
-        # Ensure directory exists
         os.makedirs(output_dir, exist_ok=True)
-        
+
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(items_info, f, indent=2, ensure_ascii=False)
-        
-        print(f"\nSuccessfully crawled {items_info['total_items']} items")
+
+        print(f"\nSuccessfully saved {items_info['total_items']} equippable items")
         print(f"Data saved to: {output_file}")
+
+        # Quick category breakdown for verification
+        cats = {}
+        for it in items_info['items']:
+            n = it.get('apiName','')
+            if 'Artifact' in n:    cats['Artifact/Ornn'] = cats.get('Artifact/Ornn',0)+1
+            elif 'Support' in n:   cats['Support']       = cats.get('Support',0)+1
+            elif 'Emblem' in n:    cats['Emblem']        = cats.get('Emblem',0)+1
+            elif 'Corrupted' in n: cats['Corrupted']     = cats.get('Corrupted',0)+1
+            elif it.get('composition'):
+                cats['Completed']  = cats.get('Completed',0)+1
+            else:
+                cats['Component']  = cats.get('Component',0)+1
+        print("\nCategory breakdown:")
+        for cat, cnt in sorted(cats.items()):
+            print(f"  {cat:20s}: {cnt}")
     else:
-        print("Failed to fetch items data")
+        print("No items found — check filter logic or network connection.")
+
 
 if __name__ == "__main__":
     main()
