@@ -132,13 +132,18 @@ class CombatSimulator:
                 champion.magic_resist * 2.0 +
                 champion.attack_speed * 100       # AS multiplier
             )
-            
+
+            # Shield bonus (e.g. Exiles II): temporary so weighted at 0.5
+            # relative to permanent HP.  _shield is set by augment passives
+            # before each combat and reset each round.
+            champ_power += getattr(champion, '_shield', 0.0) * 0.5
+
             # Cost scaling (higher cost champions are stronger)
             cost_bonus = champion.cost * 150
-            
+
             # Item bonus (TODO: Phase 2 - calculate based on items)
             item_bonus = len(champion.items) * 200  # Simplified for MVP
-            
+
             total_power += champ_power + cost_bonus + item_bonus
         
         # Team size bonus (more units = better)

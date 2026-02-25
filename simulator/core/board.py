@@ -219,6 +219,35 @@ class Board:
         
         return array
     
+    def get_hex_neighbors(self, row: int, col: int) -> List[Tuple[int, int]]:
+        """
+        Return the valid board positions adjacent to (row, col) on the hex grid.
+
+        TFT uses offset hex coordinates where even and odd rows are staggered:
+
+            Even rows (0, 2):          Odd rows (1, 3):
+            . N N .                    . . N N .
+            N X N  →  offsets          N X N
+            . N N .    (-1,c-1),(-1,c)    (-1,c),(-1,c+1)
+                       (+1,c-1),(+1,c)    (+1,c),(+1,c+1)
+                       (r, c-1),(r, c+1)  (r, c-1),(r, c+1)
+
+        Only positions within board bounds are returned.
+        """
+        if row % 2 == 0:
+            candidates = [
+                (row,     col - 1), (row,     col + 1),
+                (row - 1, col - 1), (row - 1, col),
+                (row + 1, col - 1), (row + 1, col),
+            ]
+        else:
+            candidates = [
+                (row,     col - 1), (row,     col + 1),
+                (row - 1, col),     (row - 1, col + 1),
+                (row + 1, col),     (row + 1, col + 1),
+            ]
+        return [(r, c) for r, c in candidates if self.is_valid_position(r, c)]
+
     def __repr__(self):
         champions = self.get_all_champions()
         return f"Board({self.count_champions()}/{self.rows * self.cols} positions filled)"
